@@ -1,0 +1,22 @@
+정의 : 미들웨어는 request-response 사이클 내에서 req, res 객체 및 next()함수에 접근할 수 있는 함수다.
+
+요청과 응답 사이에 express 자체에 있는 기능 외에 추가적인 기능을 넣어주는 데 사용된다.
+미들웨어에는 인증 수행, 예외처리, 세션처리, 라우텅 등 종류가 많다.
+
+마치 옆길로 새는 느낌이다.
+미들웨어가 있으면 계속 next()를 따라가다가 next()가 더 이상 없는 지점에서 'request-response cycle'이 멈춘다.
+
+단, 미들웨어에 처음 진입하는 시점은 그 경로를 만난 직후다.
+예를 들어 app.use(something)로 정의된 미들웨어는, GET /add1/:add2에서 첫 번째 /을 만나는 순간 실행된다.
+즉, add2라는 매개변수를 가지고 무슨 작업을 하기에는 애로사항이 있다.
+
+미들웨어에는 다음과 같은 종류가 있다.
+1. application level middleware
+예시 : app.use(), app.get(), app.post(), 등등
+2. error handling middleware
+추후 다시 공부!!
+3. built in middleware
+1) express.static : 이미지, css, js와 같이 내용이 고정되어 있어 응답시 별도 처리가 필요 없는 정적 파일에 대한 경로를 제공한다.
+2) express.json : req.body가 json 형태일 때, 데이터를 읽을 수 있는 형태로 파싱한다.
+3) express.urlencoded : res.body가 폼에 대한 요청일 때 사용.
+특히 json과 urlencoded은 npm의 body-parser 기능을 그대로 옮겨놓은 것이기 때문에, body-parser을 굳이 쓸 필요가 없다.
