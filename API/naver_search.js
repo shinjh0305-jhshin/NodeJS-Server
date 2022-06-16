@@ -17,6 +17,7 @@ app.get('/', async(req, res) => {
         headers: { 'X-Naver-Client-Id':clientID, 'X-Naver-Client-Secret': clientSecret }
     })
     try {
+        console.log(apiClient.baseURL);
         const response = await apiClient.get();
         console.log(response.data);
         res.json(response.data);
