@@ -1,20 +1,19 @@
 var http = require('http');
 var fs = require('fs');
-var url = require('url');
 var qs = require('querystring');
 var template = require('./lib/template');
 var sanitizeHtml = require('sanitize-html');
 
 var app = http.createServer((req, res) => {
-    var _url = req.url;
+    var url = new URL(`http://localhost:3000${req.url}`);
+    
     //url.parse : 사용자가 접근한 URL에 대한 거의 모든 정보가 담겨있다.
-    var queryData = url.parse(_url, true).query; //URL의 쿼리 스트링을 받는다. 주의: 쿼리 이전까지가 URL이다.
-    var pathName = url.parse(_url, true).pathname;
-    var path = url.parse(_url, true).path;
-    var title = sanitizeHtml(queryData.id);
+    var pathName = url.pathname;
+    var query = url.search;
+    var title = sanitizeHtml(url.searchParams.get('id'));
 
     if (pathName === '/') { //주의 : localhost:3000/?id=HTML도 루트 경로다!! 쿼리 스트링은 경로로 안 쳐준다.
-        if (path === '/') { //랜딩페이지 일 경우
+        if (query === '') { //랜딩페이지 일 경우
             title = 'Welcome';
             var description = 'Hello, Node.js';
             var createUpdate = '<a href="/create">create</a>'; //랜딩페이지에서는 update가 안 보이도록 한다
