@@ -1,148 +1,144 @@
-var http = require('http');
-var fs = require('fs');
-var qs = require('querystring');
-var template = require('./lib/template');
-var sanitizeHtml = require('sanitize-html');
+const express = require('express');
+const fs = require('fs');
+const template = require('./lib/template');
+const sanitizeHtml = require('sanitize-html');
+const compression = require('compression');
 
-var app = http.createServer((req, res) => {
-    var url = new URL(`http://localhost:3000${req.url}`);
-    
-    //url.parse : 사용자가 접근한 URL에 대한 거의 모든 정보가 담겨있다.
-    var pathName = url.pathname;
-    var query = url.search;
-    var title = sanitizeHtml(url.searchParams.get('id'));
+const app = express();
 
-    if (pathName === '/') { //주의 : localhost:3000/?id=HTML도 루트 경로다!! 쿼리 스트링은 경로로 안 쳐준다.
-        if (query === '') { //랜딩페이지 일 경우
-            title = 'Welcome';
-            var description = 'Hello, Node.js';
-            var createUpdate = '<a href="/create">create</a>'; //랜딩페이지에서는 update가 안 보이도록 한다
-        } else { //쿼리스트링이 존재 할 경우
-            var description = sanitizeHtml(fs.readFileSync(`data/${title}`, 'utf8'), {allowedTags:['h1']});
-            //주의 :: delete를 GET 방식으로 처리 할 경우, 링크로 타고 들어가서 아무나 다 망칠 수 있기에, POST 방식으로 한다.
-            var createUpdate = `
-            <a href="/create">create</a> 
-            <a href="/update?id=${title}">update</a>
-            <form action="/delete_process" method="post" onsubmit="return confirm('정말로 삭제하시겠습니까?');">
-                <input type="hidden" name="id" value="${title}">
-                <input type="submit" value="delete">
-            </form>
-            `;
-        }
+app.set('port', 8080 || process.env.PORT)
 
-        var list = template.list(fs.readdirSync('./data'));
-        var html = template.HTML(title, list, `<h2>${title}</h2><p>${description}</p>`, createUpdate);
+app.use(express.json());
+app.use(express.urlencoded()); //false : node의 querystring 모듈 사용, true : express의 qs모듈 사용
+app.use(compression()); //응답 바디를 압축해서 보내준다.
+app.use(express.static('public')); //public 폴더를 이용한다
 
-        try {
-            res.writeHead(200);
-            res.end(html);
-        } catch (e) {
-            res.end(e.message);
-        }
-    } else if (pathName === '/create') {
-        var list = template.list(fs.readdirSync('./data'));
-        var html = template.HTML(title, list, `
-            <form action="/create_process" method="post">
-                <p><input type="text" name="title" placeholder="title"></p>
-                <p>
-                    <textarea name="description" placeholder="description"></textarea>
-                </p>
-                <p><input type="submit"></p>
-            </form>
-        `, '');
+app.get('*', function(req, res, next) { //get 요청이 들어왔을 때만 미들웨어를 실행한다.
+    req.list = template.list(fs.readdirSync('./data'));
+    next();
+})
 
-        try {
-            res.writeHead(200);
-            res.end(html);
-        } catch (e) {
-            res.end(e.message);
-        }
-    } else if (pathName === '/create_process') { //제출 버튼을 누른 직후 이곳으로 온다
-       var body = '';
-       req.on('data', function(data) { //노드에서는 POST 방식으로 데이터가 오면, 데이터를 일부분씩 처리한다. 이때, 콜백 함수가 매 번 호출된다.
-            body = body + data;
-       });
-       req.on('end', function() { //모든 data가 다 오면 호출되는 콜백함수.
-            var post = qs.parse(body);
-            title = post.title;
-            var description = post.description;
+app.get('/' , function (req, res) {
+    const title = 'Welcome';
+    const description = 'Hello, Node.js';
+    const createUpdate = '<a href="/topic/create">create</a>'; 
+    const html = template.HTML(title, req.list, `
+            <h2>${title}</h2><p>${description}</p><img src="/images/travel.jpg" style="width:300px; display:block; margin-top:10px;">`, 
+            createUpdate);
 
-            try {
-                fs.writeFileSync(`data/${title}`, description);
-                res.writeHead(302, {Location: `/?id=${encodeURI(title)}`}); //한글로 입력될 경우!
-                res.end();
-            } catch (e) {
-                res.end(e.message);
-            }
-       })
-    } else if (pathName === '/update') {
-        var list = template.list(fs.readdirSync('./data'));
-        var description = fs.readFileSync(`data/${title}`, 'utf8');
+    try {
+        res.send(html);
+    } catch (error) {
+        res.send(error.message);
+    }
+});
 
-        var html = template.HTML(title, list, `
-            <form action="/update_process" method="post">
-                <input type="hidden" name="id" value="${title}">
-                <p><input type="text" name="title" placeholder="title" value="${title}"></p>
-                <p>
-                    <textarea name="description" placeholder="description" cols=100 rows=10>${description}</textarea>
-                </p>
-                <p><input type="submit"></p>
-            </form>
-        `, `<a href="/create">create</a> <a href="/update?id=${title}">update</a>`);
-        try {
-            res.writeHead(200);
-            res.end(html);
-        } catch (e) {
-            res.end(e.message);
-        }
-    } else if (pathName === '/update_process') { //제출 버튼을 누른 직후 이곳으로 온다
-        var body = '';
-        req.on('data', function(data) { //노드에서는 POST 방식으로 데이터가 오면, 데이터를 일부분씩 처리한다. 이때, 콜백 함수가 매 번 호출된다.
-             body = body + data;
-        });
-        req.on('end', function() { //모든 data가 다 오면 호출되는 콜백함수.
-             var post = qs.parse(body);
-             var id = post.id;
-             var description = post.description;
-             title = post.title;
-
-             try {
-                fs.rename(`data/${id}`, `data/${title}`, function(e) {
-                    fs.writeFile(`data/${title}`, description, 'utf8', function(e) {
-                        res.writeHead(302, {Location: `/?id=${encodeURI(title)}`});
-                        res.end();
-                    })
-                });
-
-             } catch (e) {
-                 res.end(e.message);
-             }
-        })
-     } else if (pathName === '/delete_process') { //제출 버튼을 누른 직후 이곳으로 온다
-        var body = '';
-        req.on('data', function(data) { //노드에서는 POST 방식으로 데이터가 오면, 데이터를 일부분씩 처리한다. 이때, 콜백 함수가 매 번 호출된다.
-             body = body + data;
-        });
-        req.on('end', function() { //모든 data가 다 오면 호출되는 콜백함수.
-             var post = qs.parse(body);
-             var id = post.id;
-
-             try {
-                fs.unlink(`data/${id}`, function(e) {
-                    res.writeHead(302, {Location: '/'});
-                    res.end();
-                })
-             } catch (e) {
-                 res.end(e.message);
-             }
-        })
-     } else {
-        console.log(pathName);
-        res.writeHead(404);
-        res.end('Not Found!');
+app.get('/topic/create', function(req, res) { // /topic/:pageId보다 먼저 있어야 /topic/create를 받을 수 있다,
+    const title = 'Create';
+    const html = template.HTML(title, req.list, `
+        <form action="/topic/create_process" method="post">
+            <p><input type="text" name="title" placeholder="title"></p>
+            <p>
+                <textarea name="description" placeholder="description"></textarea>
+            </p>
+            <p><input type="submit"></p>
+        </form>
+    `, '');
+    try {
+        res.send(html);
+    } catch (error) {
+        res.send(error.message);
     }
 })
 
-app.listen(3000, () => {
-    console.log("server running on 3000");
-});
+app.post('/topic/create_process', function(req, res) { //method가 post로 왔기 때문에 post로 받는다.
+    const body = req.body;
+    const title = body.title;
+    const description = body.description;
+
+    fs.writeFileSync(`data/${title}`, description);
+
+    try {
+        res.redirect(`/topic/${encodeURI(title)}`); //한글로 입력될 경우!
+    } catch (error) {
+        res.send(error.message);
+    }
+})
+
+app.get('/topic/:pageId', function(req, res) {
+    const title = sanitizeHtml(req.params.pageId);
+    const description = sanitizeHtml(fs.readFileSync(`data/${title}`, 'utf8'), {allowedTags:['h1']});
+    //주의 :: delete를 GET 방식으로 처리 할 경우, 링크로 타고 들어가서 아무나 다 망칠 수 있기에, POST 방식으로 한다.
+    const createUpdate = `
+        <a href="/topic/create">create</a> 
+        <a href="/topic/update/${title}">update</a>
+        <form action="/topic/delete_process" method="post" onsubmit="return confirm('정말로 삭제하시겠습니까?');">
+            <input type="hidden" name="id" value="${title}">
+            <input type="submit" value="delete">
+        </form>
+    `;
+
+    const html = template.HTML(title, req.list, `<h2>${title}</h2><p>${description}</p>`, createUpdate);
+
+    try {
+        res.send(html);
+    } catch (error) {
+        res.send(error.message);
+    }
+})
+
+app.get('/topic/update/:pageId', function(req, res) {
+    const title = sanitizeHtml(req.params.pageId);
+    const description = fs.readFileSync(`data/${title}`, 'utf8');
+
+    const html = template.HTML(title, req.list, `
+        <form action="/topic/update_process" method="post">
+            <input type="hidden" name="id" value="${title}">
+            <p><input type="text" name="title" placeholder="title" value="${title}"></p>
+            <p>
+                <textarea name="description" placeholder="description" cols=100 rows=10>${description}</textarea>
+            </p>
+            <p><input type="submit"></p>
+        </form>
+    `, `<a href="/topic/create">create</a> <a href="/topic/update/${title}">update</a>`);
+
+    try {
+        res.send(html);
+    } catch (error) {
+        res.send(error.message);
+    }
+})
+
+app.post('/topic/update_process', function(req, res) {
+    const body = req.body;
+    const title = body.title;
+    const id = body.id;
+    const description = body.description;
+
+    try {
+        fs.rename(`data/${id}`, `data/${title}`, function(e) {
+            fs.writeFile(`data/${title}`, description, 'utf8', function(e) {
+                res.redirect(`/topic/${encodeURI(title)}`); //한글로 입력될 경우!
+            })
+        });
+    } catch (error) {
+        res.send(error.message);
+    }
+})
+
+app.post('/topic/delete_process', function(req, res) {
+    const body = req.body;
+    const id = body.id;
+
+    fs.unlink(`data/${id}`, function(e) {
+        res.redirect('/');
+    })
+})
+
+app.use(function(req, res, next) {
+    res.status(400).send('Page not found');
+})
+
+app.listen(app.get('port'), () => {
+    console.log(`server running on ${app.get('port')}.`)
+})

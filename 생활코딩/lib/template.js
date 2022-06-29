@@ -17,7 +17,7 @@ module.exports = {
     },
     list:function templateList(filelist) {
         var list = '<ul>';
-        list += filelist.map(x => `<li><a href="/?id=${x}">${x}</a></li>`).join('')
+        list += filelist.map(x => `<li><a href="/topic/${x}">${x}</a></li>`).join('')
         list += '</ul>';
         return list;
     }
