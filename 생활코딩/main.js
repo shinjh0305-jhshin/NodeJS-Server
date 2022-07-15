@@ -52,29 +52,34 @@ app.get('/' , function (req, res) {
 
 app.get('/topic/create', function(req, res) { // /topic/:pageId보다 먼저 있어야 /topic/create를 받을 수 있다,
     const title = 'Create';
-    const html = template.HTML(title, req.list, `
-        <form action="/topic/create_process" method="post">
-            <p><input type="text" name="title" placeholder="title"></p>
-            <p>
-                <textarea name="description" placeholder="description"></textarea>
-            </p>
-            <p><input type="submit"></p>
-        </form>
-    `, '');
-    try {
-        res.send(html);
-    } catch (error) {
-        res.send(error.message);
-    }
+
+    db.query('SELECT * FROM AUTHOR', function(err, authors) {
+        const html = template.HTML(title, req.list, `
+            <form action="/topic/create_process" method="post">
+                <p><input type="text" name="title" placeholder="title"></p>
+                <p>
+                    <textarea name="description" placeholder="description"></textarea>
+                </p>
+                <p>${template.authorSelect(authors)}</p>
+                <p><input type="submit"></p>
+            </form>
+        `, '');
+        try {
+            res.send(html);
+        } catch (error) {
+            res.send(error.message);
+        }
+    })
 })
 
 app.post('/topic/create_process', function(req, res) { //method가 post로 왔기 때문에 post로 받는다.
     const body = req.body;
     const title = body.title;
     const description = body.description;
+    const author_id = body.author;
 
     db.query(`INSERT INTO TOPIC(TITLE, DESCRIPTION, CREATED, AUTHOR_ID)
-              VALUES(?, ?, NOW(), ?)`, [title, description, 1],
+              VALUES(?, ?, NOW(), ?)`, [title, description, author_id],
               function(err, result) {
                 try {
                     res.redirect(`/topic/${encodeURI(title)}`); //한글로 입력될 경우!
@@ -114,25 +119,28 @@ app.get('/topic/update/:pageId', function(req, res) {
     const title = sanitizeHtml(req.params.pageId);
 
     db.query(`SELECT * FROM TOPIC WHERE TITLE = ?`, [title], function(err, topic) {
-        const title = topic[0].TITLE;
-        const description = topic[0].DESCRIPTION;
-
-        const html = template.HTML(title, req.list, `
-            <form action="/topic/update_process" method="post">
-                <input type="hidden" name="id" value="${title}">
-                <p><input type="text" name="title" placeholder="title" value="${title}"></p>
-                <p>
-                    <textarea name="description" placeholder="description" cols=100 rows=10>${description}</textarea>
-                </p>
-                <p><input type="submit"></p>
-            </form>
-            `, `<a href="/topic/create">create</a> <a href="/topic/update/${title}">update</a>`);
-
-        try {
-            res.send(html);
-        } catch (error) {
-            res.send(error.message);
-        }
+        db.query(`SELECT * FROM AUTHOR`, function(err, authors) {
+            const title = topic[0].TITLE;
+            const description = topic[0].DESCRIPTION;
+    
+            const html = template.HTML(title, req.list, `
+                <form action="/topic/update_process" method="post">
+                    <input type="hidden" name="id" value="${title}">
+                    <p><input type="text" name="title" placeholder="title" value="${title}"></p>
+                    <p>
+                        <textarea name="description" placeholder="description" cols=100 rows=10>${description}</textarea>
+                    </p>
+                    <p>${template.authorSelect(authors, topic[0].AUTHOR_ID)}</p>
+                    <p><input type="submit"></p>
+                </form>
+                `, `<a href="/topic/create">create</a> <a href="/topic/update/${title}">update</a>`);
+    
+            try {
+                res.send(html);
+            } catch (error) {
+                res.send(error.message);
+            }
+        })
     })
 })
 
@@ -141,8 +149,9 @@ app.post('/topic/update_process', function(req, res) {
     const title = body.title;
     const id = body.id;
     const description = body.description;
+    const author_id = body.author;
 
-    db.query('UPDATE TOPIC SET TITLE = ?, DESCRIPTION = ? , AUTHOR_ID = 1 WHERE TITLE = ?', [title, description, id],
+    db.query('UPDATE TOPIC SET TITLE = ?, DESCRIPTION = ? , AUTHOR_ID = ? WHERE TITLE = ?', [title, description, author_id, id],
             function(err, result) {
                 try {
                     res.redirect(`/topic/${encodeURI(title)}`); //한글로 입력될 경우!

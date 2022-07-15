@@ -1,5 +1,5 @@
 module.exports = {
-    HTML:function templateHTML(title, list, body, control) {
+    HTML:function(title, list, body, control) {
         return `
         <!doctype html>
             <html>
@@ -15,12 +15,17 @@ module.exports = {
             </body>                                         
         </html> `;
     },
-    list:function templateList(topics) {
+    list:function(topics) {
         var list = '<ul>';
         
         list += topics.map(x => `<li><a href="/topic/${x.TITLE}">${x.TITLE}</a></li>`).join('')
         list += '</ul>';
 
         return list;
+    },
+    authorSelect:function(authors, author_id = 0) {
+        let authorList = "";
+        authorList += authors.map(x => `<option value=${x.ID} ${author_id === x.ID ? 'selected' : ''}>${x.NAME}</option>`).join('');
+        return `<select name="author">${authorList}</select>`;
     }
 }

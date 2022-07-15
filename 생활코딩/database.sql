@@ -28,6 +28,8 @@ INSERT INTO TOPIC VALUES (3, 'SQL Server', 'SQL Server is....', '2018-01-20 11:0
 INSERT INTO TOPIC VALUES (4, 'PostgreSQL', 'PostgreSQL is....', '2018-01-23 01:03:03', 3);
 INSERT INTO TOPIC VALUES (5, 'MongoDB', 'MongoDB is....', '2018-01-30 12:31:03', 1);
 
+/*
 show variables where variable_name='hostname';
 select user();	
 select host, user from mysql.user;
+*/
