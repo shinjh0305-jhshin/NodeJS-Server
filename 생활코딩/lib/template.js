@@ -15,10 +15,12 @@ module.exports = {
             </body>                                         
         </html> `;
     },
-    list:function templateList(filelist) {
+    list:function templateList(topics) {
         var list = '<ul>';
-        list += filelist.map(x => `<li><a href="/topic/${x}">${x}</a></li>`).join('')
+        
+        list += topics.map(x => `<li><a href="/topic/${x.TITLE}">${x.TITLE}</a></li>`).join('')
         list += '</ul>';
+
         return list;
     }
 }

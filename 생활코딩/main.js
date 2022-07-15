@@ -3,8 +3,19 @@ const fs = require('fs');
 const template = require('./lib/template');
 const sanitizeHtml = require('sanitize-html');
 const compression = require('compression');
+const mysql = require('mysql');
+const path = require('path');
+const dotenv = require('dotenv');
+
+dotenv.config({ path: path.resolve(__dirname, "../.env" )});
 
 const app = express();
+const db = mysql.createPool({
+    host : process.env.HOST,
+    user : process.env.USER,
+    password : process.env.PASSWORD,
+    database : process.env.DATABASE
+});
 
 app.set('port', 8080 || process.env.PORT)
 
@@ -14,8 +25,14 @@ app.use(compression()); //응답 바디를 압축해서 보내준다.
 app.use(express.static('public')); //public 폴더를 이용한다
 
 app.get('*', function(req, res, next) { //get 요청이 들어왔을 때만 미들웨어를 실행한다.
-    req.list = template.list(fs.readdirSync('./data'));
-    next();
+    db.query('SELECT * FROM TOPIC', (err, topic) => {
+        if (err) {
+            console.error(err);
+            return;
+        }
+        req.list = template.list(topic);
+        next();
+    })
 })
 
 app.get('/' , function (req, res) {
@@ -56,57 +73,67 @@ app.post('/topic/create_process', function(req, res) { //method가 post로 왔�
     const title = body.title;
     const description = body.description;
 
-    fs.writeFileSync(`data/${title}`, description);
-
-    try {
-        res.redirect(`/topic/${encodeURI(title)}`); //한글로 입력될 경우!
-    } catch (error) {
-        res.send(error.message);
-    }
+    db.query(`INSERT INTO TOPIC(TITLE, DESCRIPTION, CREATED, AUTHOR_ID)
+              VALUES(?, ?, NOW(), ?)`, [title, description, 1],
+              function(err, result) {
+                try {
+                    res.redirect(`/topic/${encodeURI(title)}`); //한글로 입력될 경우!
+                } catch (error) {
+                    res.send(error.message);
+                }
+              })
 })
 
 app.get('/topic/:pageId', function(req, res) {
     const title = sanitizeHtml(req.params.pageId);
-    const description = sanitizeHtml(fs.readFileSync(`data/${title}`, 'utf8'), {allowedTags:['h1']});
-    //주의 :: delete를 GET 방식으로 처리 할 경우, 링크로 타고 들어가서 아무나 다 망칠 수 있기에, POST 방식으로 한다.
-    const createUpdate = `
+    db.query(`SELECT * FROM TOPIC LEFT JOIN AUTHOR ON TOPIC.AUTHOR_ID = AUTHOR.ID
+            WHERE TITLE = ?`, [title], function(err, topics) {
+        //주의 :: delete를 GET 방식으로 처리 할 경우, 링크로 타고 들어가서 아무나 다 망칠 수 있기에, POST 방식으로 한다.
+        const title = topics[0].TITLE;
+        const description = topics[0].DESCRIPTION;
+       
+        const createUpdate = `
         <a href="/topic/create">create</a> 
         <a href="/topic/update/${title}">update</a>
         <form action="/topic/delete_process" method="post" onsubmit="return confirm('정말로 삭제하시겠습니까?');">
             <input type="hidden" name="id" value="${title}">
             <input type="submit" value="delete">
-        </form>
-    `;
+        </form> `;
 
-    const html = template.HTML(title, req.list, `<h2>${title}</h2><p>${description}</p>`, createUpdate);
+        const html = template.HTML(title, req.list, `<h2>${title}</h2><p>${description}</p><p>by ${topics[0].NAME}</p>`, createUpdate);
 
-    try {
-        res.send(html);
-    } catch (error) {
-        res.send(error.message);
-    }
+        try {
+            res.send(html);
+        } catch (error) {
+            res.send(error.message);
+        }
+    }) 
 })
 
 app.get('/topic/update/:pageId', function(req, res) {
     const title = sanitizeHtml(req.params.pageId);
-    const description = fs.readFileSync(`data/${title}`, 'utf8');
 
-    const html = template.HTML(title, req.list, `
-        <form action="/topic/update_process" method="post">
-            <input type="hidden" name="id" value="${title}">
-            <p><input type="text" name="title" placeholder="title" value="${title}"></p>
-            <p>
-                <textarea name="description" placeholder="description" cols=100 rows=10>${description}</textarea>
-            </p>
-            <p><input type="submit"></p>
-        </form>
-    `, `<a href="/topic/create">create</a> <a href="/topic/update/${title}">update</a>`);
+    db.query(`SELECT * FROM TOPIC WHERE TITLE = ?`, [title], function(err, topic) {
+        const title = topic[0].TITLE;
+        const description = topic[0].DESCRIPTION;
 
-    try {
-        res.send(html);
-    } catch (error) {
-        res.send(error.message);
-    }
+        const html = template.HTML(title, req.list, `
+            <form action="/topic/update_process" method="post">
+                <input type="hidden" name="id" value="${title}">
+                <p><input type="text" name="title" placeholder="title" value="${title}"></p>
+                <p>
+                    <textarea name="description" placeholder="description" cols=100 rows=10>${description}</textarea>
+                </p>
+                <p><input type="submit"></p>
+            </form>
+            `, `<a href="/topic/create">create</a> <a href="/topic/update/${title}">update</a>`);
+
+        try {
+            res.send(html);
+        } catch (error) {
+            res.send(error.message);
+        }
+    })
 })
 
 app.post('/topic/update_process', function(req, res) {
@@ -115,23 +142,26 @@ app.post('/topic/update_process', function(req, res) {
     const id = body.id;
     const description = body.description;
 
-    try {
-        fs.rename(`data/${id}`, `data/${title}`, function(e) {
-            fs.writeFile(`data/${title}`, description, 'utf8', function(e) {
-                res.redirect(`/topic/${encodeURI(title)}`); //한글로 입력될 경우!
-            })
-        });
-    } catch (error) {
-        res.send(error.message);
-    }
+    db.query('UPDATE TOPIC SET TITLE = ?, DESCRIPTION = ? , AUTHOR_ID = 1 WHERE TITLE = ?', [title, description, id],
+            function(err, result) {
+                try {
+                    res.redirect(`/topic/${encodeURI(title)}`); //한글로 입력될 경우!
+                } catch (error) {
+                    res.send(error.message);
+                }
+     })
 })
 
 app.post('/topic/delete_process', function(req, res) {
     const body = req.body;
     const id = body.id;
 
-    fs.unlink(`data/${id}`, function(e) {
-        res.redirect('/');
+    db.query('DELETE FROM TOPIC WHERE TITLE = ?', [id], function(err, result) {
+        try {
+            res.redirect('/');
+        } catch (error) {
+            res.send(error.message);
+        }
     })
 })
 
