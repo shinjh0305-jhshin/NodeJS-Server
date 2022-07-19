@@ -12,9 +12,9 @@ module.exports = function(app) {
     app.use(passport.session());
     
     passport.serializeUser(function(user, done) { //로그인에 성공했을 때, authData를 user로 받는다. 로그인 성공시 1회만 호출된다.
-        done(null, user.email);
+        done(null, user.email); //세션에 user.email을 내부적으로 기록한다.
     });
-    passport.deserializeUser(function(user, done) { //페이지에 방문할 때마다 호출된다. user(기본키)를 사용해서 authData에서 사용자를 검색한다.
+    passport.deserializeUser(function(user, done) { //페이지에 방문할 때마다 호출된다. user(기본키)를 사용해서 데이터베이스(authData)에서 사용자를 검색한다.
         done(null, authData); //request.user객체에 authData 객체를 주입한다.
     });
     
