@@ -1,12 +1,12 @@
 var express = require('express');
 var app = express();
-var fs = require('fs');
 var bodyParser = require('body-parser');
 var compression = require('compression');
 var helmet = require('helmet');
 var session = require('express-session');
 var FileStore = require('session-file-store')(session);
 var flash = require('connect-flash');
+var db = require('./lib/db');
 
 app.use(helmet());
 app.use(express.static('public'));
@@ -40,11 +40,10 @@ app.get('/flash-display', function(req, res) { //세션 스토어에 담긴 플�
 })
 */
 
-app.get('*', function(request, response, next){
-  fs.readdir('./data', function(error, filelist){
-    request.list = filelist;
-    next();
-  });
+app.get('*', async function(request, response, next){
+  const [result] = await db.query('SELECT ID, TITLE FROM TOPICS');
+  request.list = result;
+  next();
 });
 
 app.use('/', indexRouter);
