@@ -46,62 +46,67 @@ router.post('/create_process', async function(request, response){
 
 });
 
-router.get('/update/:pageId', function(request, response){
-  if (!auth.isOwner(request, response)) {
-    response.redirect('/');
-    return false;
+router.get('/update/:pageId', async function(request, response){
+  const pageId = request.params.pageId;
+  const [result] = await db.query('SELECT * FROM TOPICS WHERE TOPICS.ID = ?', [pageId])
+
+  if (result[0].USER_ID !== request.user.ID) {
+    request.flash('error', 'Access Denied');
+    return response.redirect('/');
   }
-  var filteredId = path.parse(request.params.pageId).base;
-  fs.readFile(`data/${filteredId}`, 'utf8', function(err, description){
-    var title = request.params.pageId;
-    var list = template.list(request.list);
-    var html = template.HTML(title, list,
-      `
-      <form action="/topic/update_process" method="post">
-        <input type="hidden" name="id" value="${title}">
-        <p><input type="text" name="title" placeholder="title" value="${title}"></p>
-        <p>
-          <textarea name="description" placeholder="description">${description}</textarea>
-        </p>
-        <p>
-          <input type="submit">
-        </p>
-      </form>
-      `,
-      `<a href="/topic/create">create</a> <a href="/topic/update/${title}">update</a>`,
-      auth.statusUI(request, response)
-    );
-    response.send(html);
-  });
+  
+  var title =  sanitizeHtml(result[0].TITLE);
+  var description = sanitizeHtml(result[0].DESCRIPTION, { allowedTags: ['h1'] });
+  var list = template.list(request.list);
+
+  var html = template.HTML(title, list,
+    `
+    <form action="/topic/update_process" method="post">
+      <input type="hidden" name="id" value="${pageId}">
+      <p><input type="text" name="title" placeholder="title" value="${title}"></p>
+      <p>
+        <textarea name="description" placeholder="description">${description}</textarea>
+      </p>
+      <p>
+        <input type="submit">
+      </p>
+    </form>
+    `,
+    `<a href="/topic/create">create</a> <a href="/topic/update/${title}">update</a>`,
+    auth.statusUI(request, response)
+  );
+  response.send(html);
 });
 
-router.post('/update_process', function(request, response){
+router.post('/update_process', async function(request, response){
   if (!auth.isOwner(request, response)) {
     response.redirect('/');
     return false;
   }
   var post = request.body;
-  var id = post.id;
+  var pageId = post.id;
   var title = post.title;
   var description = post.description;
-  fs.rename(`data/${id}`, `data/${title}`, function(error){
-    fs.writeFile(`data/${title}`, description, 'utf8', function(err){
-      response.redirect(`/topic/${title}`);
-    })
-  });
+
+  await db.query('UPDATE TOPICS SET TITLE = ?, DESCRIPTION = ? WHERE ID = ?', [title, description, pageId]);
+
+  response.redirect(`/topic/${pageId}`);
 });
 
-router.post('/delete_process', function(request, response){
-  if (!auth.isOwner(request, response)) {
-    response.redirect('/');
-    return false;
-  }
+router.post('/delete_process', async function(request, response){
   var post = request.body;
-  var id = post.id;
-  var filteredId = path.parse(id).base;
-  fs.unlink(`data/${filteredId}`, function(error){
-    response.redirect('/');
-  });
+  var pageId = post.id;
+  
+  const [result] = await db.query('SELECT * FROM TOPICS WHERE TOPICS.ID = ?', [pageId])
+  
+  if (result[0].USER_ID !== request.user.ID) {
+    request.flash('error', 'Access Denied');
+    return response.redirect('/');
+  }
+
+  await db.query('DELETE FROM TOPICS WHERE ID = ?', [pageId]);
+
+  response.redirect(`/`)
 });
 
 router.get('/:pageId', async function(request, response, next) { 
@@ -115,7 +120,7 @@ router.get('/:pageId', async function(request, response, next) {
   var html = template.HTML(title, list,
     `<h2>${title}</h2>${description}<p>by ${userName}</p>`,
     ` <a href="/topic/create">create</a>
-      <a href="/topic/update/${title}">update</a>
+      <a href="/topic/update/${pageId}">update</a>
       <form action="/topic/delete_process" method="post">
         <input type="hidden" name="id" value="${pageId}">
         <input type="submit" value="delete">
