@@ -47,10 +47,10 @@ module.exports = function(passport) {
     var html = template.HTML(title, list, `
       <div style="color: red;">${feedback}</div>
       <form action="/auth/register_process" method="post">
-        <p><input type="text" name="email" placeholder="email" value="aaa@aaa.com"></p>
-        <p><input type="password" name="pwd" placeholder="password" value="111111"></p>
-        <p><input type="password" name="pwd2" placeholder="password" value="111111"></p>
-        <p><input type="text" name="displayName" placeholder="display name" value="JaeHyun Shin"></p>
+        <p><input type="text" name="email" placeholder="email"></p>
+        <p><input type="password" name="pwd" placeholder="password"></p>
+        <p><input type="password" name="pwd2" placeholder="password"></p>
+        <p><input type="text" name="displayName" placeholder="display name"></p>
         <p>
           <input type="submit" value="register">
         </p>
@@ -82,13 +82,9 @@ module.exports = function(passport) {
         var salt = crypto.randomBytes(16);
         crypto.pbkdf2(pwd, salt, 310000, 32, 'sha256', async function(err, hashedPassword) {
           if (err) console.log(err); 
-          await db.query('INSERT INTO USERS VALUES (?, ?, ?, ?, ?)', [id, hashedPassword, email, salt, displayName]);
+          await db.query('INSERT INTO USERS(ID, PASSWORD, EMAIL, SALT, DISPLAYNAME) VALUES (?, ?, ?, ?, ?)', [id, hashedPassword, email, salt, displayName]);
           var user = {
             ID : id,
-            EMAIL : email,
-            PASSWORD : hashedPassword,
-            DISPLAYNAME : displayName,
-            SALT : salt
           };
           request.login(user, function(err) {
             return response.redirect('/')
@@ -96,6 +92,13 @@ module.exports = function(passport) {
         })
       }
     }
+  });
+
+  router.get('/google', passport.authenticate('google'));
+  router.get('/google/callback',
+    passport.authenticate('google', { failureRedirect: '/auth/login', failureMessage: true }),
+    function(req, res) {
+      res.redirect('/');
   });
 
   return router;

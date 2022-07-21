@@ -1,9 +1,15 @@
 module.exports = function(app) {
     var passport = require('passport');
     var LocalStrategy = require('passport-local').Strategy;
+    var GoogleStrategy = require('passport-google-oauth').OAuth2Strategy;
     var crypto = require('crypto');
+    const dotenv = require('dotenv');
+    const shortid = require('shortid');
+    const path = require('path');
     var db = require('./db');
     
+    dotenv.config({ path: path.resolve(__dirname, "../../.env" )});   
+
     app.use(passport.initialize());
     app.use(passport.session());
     
@@ -34,7 +40,27 @@ module.exports = function(app) {
           })
         }
     ));
+    
+    passport.use(new GoogleStrategy({
+      clientID: process.env.GOOGLEID,
+      clientSecret: process.env.GOOGLEPWD,
+      callbackURL: process.env.GOOGLEURL,
+      scope: ['profile', 'email']
+    }, async function(accessToken, refreshToken, profile, done) { //구글로부터 accesstoken을 받은 뒤, 이를 바탕으로 API에 정보 요청을 하고 응답을 받은 뒤 이 함수가 실행된다.
+      var email = profile.emails[0].value;
+      var [result] = await db.query('SELECT * FROM USERS WHERE EMAIL = ?', [email]);
 
+      if (result[0]) {
+        await db.query('UPDATE USERS SET GOOGLEID = ? WHERE ID = ?', [profile.id, result[0].ID]);
+        return done(null, result[0]);
+      } else {
+        var userId = shortid.generate();
+        await db.query('INSERT INTO USERS(ID, EMAIL, DISPLAYNAME, GOOGLEID) VALUES(?, ?, ?, ?)', [userId, email, profile.displayName, profile.id]);
+
+        var user = { ID : userId };
+        return done(null, user);
+      }
+    }))
     return passport;
 };
 
