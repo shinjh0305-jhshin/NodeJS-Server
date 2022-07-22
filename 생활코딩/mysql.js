@@ -1,21 +1,20 @@
-const mysql = require('mysql');
+const mysql = require("mysql2")
 const dotenv = require('dotenv');
 const path = require('path');
 
 dotenv.config({ path: path.resolve(__dirname, "../.env" )});
 
-const connection = mysql.createConnection({
+const connection = mysql.createPool({
     host : process.env.HOST,
-    user : process.env.USER,
+    user : process.env.DBUSER,
     password : process.env.PASSWORD,
     database : process.env.DATABASE
-});
+}).promise();
 
-connection.connect();
 
-connection.query('SELECT * FROM TOPIC', function(err, res, field) {
-    if (err) {
-        console.error(err);
-    }
-    console.log(res);
-});
+async function fuckyou() {
+    const [result] = await connection.query('SELECT * FROM AUTHOR');
+    console.log(result[0]);
+}
+
+fuckyou();
