@@ -1,5 +1,10 @@
 module.exports = function(body) {
-    var result = {};
+    const id_re = /^.{4,12}$/;
+    const pwd_re = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    const email_re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const phone_re = /^(?:\d{3}|\(\d{3}\))([-\/\.])\d{4}\1\d{4}$/;
+
+    //contains result of validation
 
     const user_id = body.user_id;
     const pwd = body.pwd;
@@ -7,12 +12,6 @@ module.exports = function(body) {
     const email = body.email;
     const phone = body.phone;
 
-    const id_re = /^.{4,12}$/;
-    const pwd_re = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    const email_re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    const phone_re = /^(?:\d{3}|\(\d{3}\))([-\/\.])\d{4}\1\d{4}$/;
-
-    //contains result of validation
     let result = {};
 
     if (user_id && pwd && pwd2 && email && phone) {

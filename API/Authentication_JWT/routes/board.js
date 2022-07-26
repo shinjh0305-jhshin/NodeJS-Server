@@ -14,7 +14,7 @@ router.post('/', async (req, res) => {
     const title = req.body.title;
     const content = req.body.content;
 
-    await db.query('INSERT INTO users(user_id, date, title, content) values (?, ?, ?, ?)', [user_id, date, title, content]);
+    await db.query('INSERT INTO board(user_id, date, title, content) values (?, ?, ?, ?)', [user_id, date, title, content]);
 
     res.redirect('/board');
 })
@@ -24,14 +24,14 @@ router.put('/:id', async (req, res) => {
     const newtitle = req.body.title;
     const newcontent = req.body.content;
 
-    await db.query('UPDATE users SET title=?, date=?, content=? WHERE id=?', [newtitle, new Date(Date.now()), newcontent, boardId]);
+    await db.query('UPDATE board SET title=?, date=?, content=? WHERE id=?', [newtitle, new Date(Date.now()), newcontent, boardId]);
     
     res.redirect('/board');
 })
 
 router.delete('/:id', async (req, res) => {
     const boardId = req.params.id;
-    await db.query('DELETE FROM users WHERE id=?', [boardId]);
+    await db.query('DELETE FROM board WHERE id=?', [boardId]);
     res.redirect('/board');
 })
 
