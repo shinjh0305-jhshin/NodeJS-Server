@@ -1,4 +1,6 @@
-module.exports = function(body) {
+const db = require('../lib/db');
+
+module.exports = async function(body) {
     const id_re = /^.{4,12}$/;
     const pwd_re = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     const email_re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -31,14 +33,20 @@ module.exports = function(body) {
             result.code = 5;
             result.msg = "Phone number should be in form of ###-####-####";
         } else {
-            result.code = 0;
-            result.msg = "SUCCESS";
+            const [data] = await db.query('SELECT * FROM user WHERE user_id=?', [user_id]);
+
+            if (data[0]) {
+                result.code = 6;
+                result.msg = "User already exists.";
+            } else {
+                result.code = 0;
+                result.msg = "SUCCESS";
+            }
         }
     } else {
         result.code = 10;
         result.msg = "Missing information."
     }
     
-
     return result;
 }

@@ -1,15 +1,18 @@
 const express = require('express');
 const router = express.Router();
+const util = require('../lib/util')
 const db = require('../lib/db');
 
 router.get('/', async (req, res) => {
-    const [result] = await db.query('SELECT * FROM users');
+    const [result] = await db.query('SELECT * FROM board');
     res.send(result);
 })
 
 router.post('/', async (req, res) => {
-    console.log(req.params);
-    const user_id = req.body.user_id;
+    if (req.tokenuser.code !== 0 || req.tokenuser.access < 5) {
+        return util.sendMessage(1, "Not enough access to POST.", res);
+    }
+    const user_id = req.tokenuser.user_id;
     const date = new Date(Date.now());
     const title = req.body.title;
     const content = req.body.content;
@@ -20,6 +23,9 @@ router.post('/', async (req, res) => {
 })
 
 router.put('/:id', async (req, res) => {
+    if (req.tokenuser.code !== 0 || req.tokenuser.access < 5) {
+        return util.sendMessage(1, "Not enough access to PUT.", res);
+    }
     const boardId = req.params.id;
     const newtitle = req.body.title;
     const newcontent = req.body.content;
@@ -30,6 +36,9 @@ router.put('/:id', async (req, res) => {
 })
 
 router.delete('/:id', async (req, res) => {
+    if (req.tokenuser.code !== 0 || req.tokenuser.access < 5) {
+        return util.sendMessage(1, "Not enough access to DELETE.", res);
+    }
     const boardId = req.params.id;
     await db.query('DELETE FROM board WHERE id=?', [boardId]);
     res.redirect('/board');
