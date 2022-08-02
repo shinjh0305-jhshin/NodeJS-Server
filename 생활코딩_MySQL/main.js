@@ -11,7 +11,7 @@ dotenv.config({ path: path.resolve(__dirname, "../.env" )});
 
 const app = express();
 
-app.set('port', 8080 || process.env.PORT)
+app.set('port', 3000 || process.env.PORT)
 
 app.use(express.json());
 app.use(express.urlencoded()); //false : node의 querystring 모듈 사용, true : express의 qs모듈 사용

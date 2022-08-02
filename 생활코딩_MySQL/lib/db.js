@@ -6,7 +6,7 @@ dotenv.config({ path: path.resolve(__dirname, "../../.env" )});
 
 const db = mysql.createPool({
     host : process.env.HOST,
-    user : process.env.USER,
+    user : process.env.DBUSER,
     password : process.env.PASSWORD,
     database : process.env.DATABASE
 });
