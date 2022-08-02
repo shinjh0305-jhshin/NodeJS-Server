@@ -8,7 +8,7 @@ const morgan = require('morgan');
 const app = express();
 
 app.set("port", 3000 || process.env.PORT);
-app.set('views', './src/views');
+app.set('views', __dirname + '/views');
 app.set('view engine', 'pug');
 
 app.use(morgan('dev'));

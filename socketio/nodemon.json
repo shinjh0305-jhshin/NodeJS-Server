@@ -1,4 +1,4 @@
 {
-    "ignore": ["src/public/*"],
-    "exec": "babel-node src/server.js"
+    "ignore": ["webcam/public/*"],
+    "exec": "babel-node webcam/server.js"
 }
